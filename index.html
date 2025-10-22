@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clorox - Entity Stock Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .data-container {
+            display: flex;
+            justify-content: space-between;
+            max-width: 600px;
+        }
+        .data-section {
+            width: 45%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .data-section h2 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .data-field {
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1 id="share-entity-name">Clorox - Entity Stock Data</h1>
+    <div class="data-container">
+        <div class="data-section">
+            <h2>Maximum Share Value</h2>
+            <p class="data-field">Value: <span id="share-max-value"></span></p>
+            <p class="data-field">Financial Year: <span id="share-max-fy"></span></p>
+        </div>
+        <div class="data-section">
+            <h2>Minimum Share Value</h2>
+            <p class="data-field">Value: <span id="share-min-value"></span></p>
+            <p class="data-field">Financial Year: <span id="share-min-fy"></span></p>
+        </div>
+    </div>
+    
+    <script>
+        async function fetchData(cik = '0000021076') {
+            const url = `https://data.sec.gov/api/xbrl/companyconcept/CIK${cik}/dei/EntityCommonStockSharesOutstanding.json`;
+            const response = await fetch(url, {
+                headers: {
+                    "User-Agent": "Company Agent - mycompany@domain.com"
+                }
+            });
+
+            if (!response.ok) {
+                console.error("Failed to fetch data");
+                return;
+            }
+
+            const data = await response.json();
+            const entityName = data.entityName || 'Unknown';
+            const filteredData = data.units.shares.filter(item => item.fy > "2020" && typeof item.val === 'number');
+
+            const maxData = filteredData.reduce((max, item) => item.val > max.val ? item : max, { val: -Infinity });
+            const minData = filteredData.reduce((min, item) => item.val < min.val ? item : min, { val: Infinity });
+
+            const jsonData = {
+                "entityName": entityName,
+                "max": { "val": maxData.val, "fy": maxData.fy },
+                "min": { "val": minData.val, "fy": minData.fy }
+            };
+
+            // Update HTML
+            document.getElementById('share-entity-name').textContent = `${entityName} - Entity Stock Data`;
+            document.getElementById('share-max-value').textContent = jsonData.max.val;
+            document.getElementById('share-max-fy').textContent = jsonData.max.fy;
+            document.getElementById('share-min-value').textContent = jsonData.min.val;
+            document.getElementById('share-min-fy').textContent = jsonData.min.fy;
+        }
+
+        function loadCorrectData() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const cik = urlParams.get('CIK');
+            fetchData(cik);
+        }
+
+        loadCorrectData();
+    </script>
+</body>
+</html>
